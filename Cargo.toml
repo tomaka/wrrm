@@ -1,10 +1,12 @@
 [package]
 name = "wrrm"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 description = "Write-rarely-read-many wrapper"
 edition = "2018"
 license = "MIT"
+repository = "https://github.com/tomaka/wrrm"
+documentation = "https://docs.rs/wrrm"
 
 [dependencies]
 atomicbox_nostd = "0.3.1"
