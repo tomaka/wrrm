@@ -1,15 +1,15 @@
 // Copyright (c) 2020 Pierre Krieger
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,7 +25,11 @@ extern crate alloc;
 use alloc::{boxed::Box, sync::Arc};
 
 use atomicbox_nostd::AtomicOptionBox;
-use core::{fmt, ops::{Deref, DerefMut}, sync::atomic::Ordering};
+use core::{
+    fmt,
+    ops::{Deref, DerefMut},
+    sync::atomic::Ordering,
+};
 
 /// "Write-rarely-read-many" wrapper.
 ///
@@ -59,7 +63,7 @@ impl<T> Wrrm<T> {
     /// Creates a new [`Wrrm`].
     pub fn new(value: T) -> Self {
         Wrrm {
-            inner: AtomicOptionBox::new(Some(Box::new(Arc::new(value))))
+            inner: AtomicOptionBox::new(Some(Box::new(Arc::new(value)))),
         }
     }
 
@@ -108,7 +112,7 @@ impl<T> From<T> for Wrrm<T> {
 
 impl<T> fmt::Debug for Wrrm<T>
 where
-    T: fmt::Debug
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.access(), f)
@@ -149,7 +153,7 @@ impl<'a, T> Deref for Access<'a, T> {
 
 impl<'a, T> fmt::Debug for Access<'a, T>
 where
-    T: fmt::Debug
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <T as fmt::Debug>::fmt(&*self.inner, f)
@@ -184,8 +188,7 @@ impl<'a, T> Modify<'a, T> {
                     let new_value = Box::new(Arc::new(me.new_value));
                     let _updated = me.parent.inner.swap(Some(new_value), Ordering::AcqRel);
                     debug_assert!(_updated.is_none());
-                    return Ok(())
-
+                    return Ok(());
                 } else {
                     let _updated = me.parent.inner.swap(Some(in_ptr.clone()), Ordering::AcqRel);
                     debug_assert!(_updated.is_none());
@@ -215,7 +218,7 @@ impl<'a, T> DerefMut for Modify<'a, T> {
 
 impl<'a, T> fmt::Debug for Modify<'a, T>
 where
-    T: fmt::Debug
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         <T as fmt::Debug>::fmt(&self.new_value, f)
@@ -225,7 +228,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::Wrrm;
-    use std::{sync::{Arc, Barrier}, thread, time::Duration};
+    use std::{
+        sync::{Arc, Barrier},
+        thread,
+        time::Duration,
+    };
 
     #[test]
     fn basic() {
