@@ -282,7 +282,12 @@ mod tests {
             let barrier = barrier.clone();
             thread::spawn(move || {
                 barrier.wait();
-                val.modify_with(|v| *v += 1);
+                let mut seen_value = i32::max_value();
+                val.modify_with(|v| {
+                    *v += 1;
+                    seen_value = *v;
+                });
+                assert!(*val.access() >= seen_value);
             });
         }
 
