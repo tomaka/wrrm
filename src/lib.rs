@@ -28,7 +28,7 @@ use atomicbox_nostd::AtomicOptionBox;
 use core::{
     fmt,
     ops::{Deref, DerefMut},
-    sync::atomic::Ordering,
+    sync::atomic::{self, Ordering},
 };
 
 /// "Write-rarely-read-many" wrapper.
@@ -79,6 +79,8 @@ impl<T> Wrrm<T> {
                 debug_assert!(_updated.is_none());
                 break *value;
             }
+
+            atomic::spin_loop_hint();
         };
 
         Access {
@@ -198,6 +200,8 @@ impl<'a, T> Modify<'a, T> {
                     });
                 }
             }
+
+            atomic::spin_loop_hint();
         }
     }
 }
