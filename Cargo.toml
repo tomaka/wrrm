@@ -1,6 +1,6 @@
 [package]
 name = "wrrm"
-version = "0.1.1"
+version = "1.0.0"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 description = "Write-rarely-read-many wrapper"
 edition = "2018"

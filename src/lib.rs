@@ -18,12 +18,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//! "Write-rarely-read-many" wrapper.
+//!
+//! This lock-free container is suitable in situations where you perform a lot of reads to a `T`,
+//! but only rarely modify that `T`.
+//!
+//! From a logic point of view, it is more or less the equivalent of an `RwLock`, except that:
+//!
+//! - It works in `no_std` platforms.
+//! - Reading the `T` always takes the same time and will never wait for a lock to be released.
+//! - Writing the `T` is done in a compare-and-swap way, and updates might have to be performed
+//! multiple times.
+//!
+//! See the documentation of the [`Wrrm`].
+//!
+//! # Example
+//!
+//! ```
+//! let val = wrrm::Wrrm::from(5);
+//! assert_eq!(*val.access(), 5);
+//!
+//! val.modify_with(|v| *v += 1);
+//! assert_eq!(*val.access(), 6);
+//! ```
+
 #![cfg_attr(not(test), no_std)]
 
 extern crate alloc;
 
 use alloc::{boxed::Box, sync::Arc};
-
 use atomicbox_nostd::AtomicOptionBox;
 use core::{
     fmt,
@@ -32,16 +55,6 @@ use core::{
 };
 
 /// "Write-rarely-read-many" wrapper.
-///
-/// This lock-free container is suitable in situations where you perform a lot of reads to a `T`,
-/// but only rarely modify that `T`.
-///
-/// From a logic point of view, it is more or less the equivalent of an `RwLock`, except that:
-///
-/// - It works in `no_std` platforms.
-/// - Reading the `T` always takes the same time and will never wait for a lock to be released.
-/// - Writing the `T` is done in a compare-and-swap way, and updates might have to be performed
-/// multiple times.
 ///
 /// # Implementation details
 ///
@@ -91,12 +104,17 @@ impl<T> Wrrm<T> {
 
     /// Modifies the value using the given function.
     ///
-    /// > **Important**: The function might be called multiple times.
+    /// The function will be passed a mutable reference to a copy of the value currently stored
+    /// in the container.
+    ///
+    /// > **Note**: The function might be called multiple times, with new copies every time, in
+    /// >           situations where multiple threads are competing for an update. You are
+    /// >           expected to perform the same modification on the value every time.
     pub fn modify_with(&self, modification: impl FnMut(&mut T))
     where
         T: Clone,
     {
-        self.access().modify_with(modification)
+        Access::modify_with(self.access(), modification)
     }
 }
 
@@ -130,10 +148,13 @@ pub struct Access<'a, T> {
 impl<'a, T: Clone> Access<'a, T> {
     /// Modifies the value using the given function.
     ///
-    /// > **Important**: The function might be called multiple times.
-    pub fn modify_with(self, mut modification: impl FnMut(&mut T)) {
-        let mut me = self;
-
+    /// The function will be passed a mutable reference to a copy of the value currently stored
+    /// in the container.
+    ///
+    /// > **Note**: The function might be called multiple times, with new copies every time, in
+    /// >           situations where multiple threads are competing for an update. You are
+    /// >           expected to perform the same modification on the value every time.
+    pub fn modify_with(mut me: Self, mut modification: impl FnMut(&mut T)) {
         loop {
             let mut modify = Modify::from(me);
             modification(&mut *modify);
@@ -165,7 +186,7 @@ where
 /// Pending modification to the content of the [`Wrrm`].
 pub struct Modify<'a, T> {
     parent: &'a Wrrm<T>,
-    /// Value expected to be found in the atomic pointer when writing `new_value`.
+    /// Value expected to be found in the atomic pointer when writing back `new_value`.
     expected: usize,
     new_value: T,
 }
@@ -245,7 +266,7 @@ mod tests {
         let first_access = val.access();
         assert_eq!(*first_access, 5);
 
-        val.access().modify_with(|v| *v = 6);
+        val.modify_with(|v| *v = 6);
 
         assert_eq!(*val.access(), 6);
         assert_eq!(*first_access, 5);
