@@ -119,6 +119,14 @@ impl<T> Wrrm<T> {
     }
 }
 
+/// The `Clone` implementation performs a "deep clone" and clones the `T` (rather than a
+/// shallow clone which is what cloning an `Arc` would do).
+impl<T: Clone> Clone for Wrrm<T> {
+    fn clone(&self) -> Self {
+        Wrrm::new(<T as Clone>::clone(&self.access()))
+    }
+}
+
 impl<T: Default> Default for Wrrm<T> {
     fn default() -> Self {
         Wrrm::new(Default::default())
