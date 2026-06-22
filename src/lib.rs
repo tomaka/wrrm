@@ -47,7 +47,7 @@
 extern crate alloc;
 
 use alloc::{boxed::Box, sync::Arc};
-use atomicbox_nostd::AtomicOptionBox;
+use atomicbox::AtomicOptionBox;
 use core::{
     fmt,
     hint::spin_loop,

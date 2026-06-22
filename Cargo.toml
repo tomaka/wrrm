@@ -9,4 +9,4 @@ repository = "https://github.com/tomaka/wrrm"
 documentation = "https://docs.rs/wrrm"
 
 [dependencies]
-atomicbox_nostd = "0.3.1"
+atomicbox = "0.4.0"
