@@ -196,7 +196,7 @@ where
 pub struct Modify<'a, T> {
     parent: &'a Wrrm<T>,
     /// Value expected to be found in the atomic pointer when writing back `new_value`.
-    expected: usize,
+    expected: Arc<T>,
     new_value: T,
 }
 
@@ -204,8 +204,8 @@ impl<'a, T: Clone> From<Access<'a, T>> for Modify<'a, T> {
     fn from(access: Access<'a, T>) -> Self {
         Modify {
             parent: access.parent,
-            expected: Arc::as_ptr(&access.inner) as usize,
-            new_value: (*access.inner).clone(),
+            new_value: <T as Clone>::clone(&*access.inner),
+            expected: access.inner,
         }
     }
 }
@@ -216,7 +216,7 @@ impl<'a, T> Modify<'a, T> {
     pub fn apply(me: Self) -> Result<(), Access<'a, T>> {
         loop {
             if let Some(in_ptr) = me.parent.inner.take(Ordering::AcqRel) {
-                if Arc::as_ptr(&*in_ptr) as usize == me.expected {
+                if Arc::ptr_eq(&*in_ptr, &me.expected) {
                     let new_value = Box::new(Arc::new(me.new_value));
                     let _updated = me.parent.inner.swap(Some(new_value), Ordering::AcqRel);
                     debug_assert!(_updated.is_none());
