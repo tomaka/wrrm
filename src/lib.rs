@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Pierre Krieger
+// Copyright (c) 2020-2026 Pierre Krieger
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 //! - It works in `no_std` platforms.
 //! - Reading the `T` always takes the same time and will never wait for a lock to be released.
 //! - Writing the `T` is done in a compare-and-swap way, and updates might have to be performed
-//! multiple times.
+//!   multiple times.
 //!
 //! See the documentation of the [`Wrrm`].
 //!
@@ -50,8 +50,9 @@ use alloc::{boxed::Box, sync::Arc};
 use atomicbox_nostd::AtomicOptionBox;
 use core::{
     fmt,
+    hint::spin_loop,
     ops::{Deref, DerefMut},
-    sync::atomic::{self, Ordering},
+    sync::atomic::Ordering,
 };
 
 /// "Write-rarely-read-many" wrapper.
@@ -85,7 +86,7 @@ impl<T> Wrrm<T> {
     /// This [`Access`] struct will always point to the same, potentially stale, version. In other
     /// words, if the content of the [`Wrrm`] is updated while an [`Access`] is alive, this
     /// [`Access`] will still point to the old version.
-    pub fn access(&self) -> Access<T> {
+    pub fn access(&self) -> Access<'_, T> {
         let inner = loop {
             if let Some(value) = self.inner.take(Ordering::AcqRel) {
                 let _updated = self.inner.swap(Some(value.clone()), Ordering::AcqRel);
@@ -93,7 +94,7 @@ impl<T> Wrrm<T> {
                 break *value;
             }
 
-            atomic::spin_loop_hint();
+            spin_loop();
         };
 
         Access {
@@ -170,7 +171,7 @@ impl<'a, T> Deref for Access<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &*self.inner
+        &self.inner
     }
 }
 
@@ -222,7 +223,7 @@ impl<'a, T> Modify<'a, T> {
                 }
             }
 
-            atomic::spin_loop_hint();
+            spin_loop();
         }
     }
 }
@@ -282,7 +283,7 @@ mod tests {
             let barrier = barrier.clone();
             thread::spawn(move || {
                 barrier.wait();
-                let mut seen_value = i32::max_value();
+                let mut seen_value = i32::MAX;
                 val.modify_with(|v| {
                     *v += 1;
                     seen_value = *v;
