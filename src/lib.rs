@@ -117,6 +117,12 @@ impl<T> Wrrm<T> {
     {
         Access::modify_with(self.access(), modification)
     }
+
+    /// Replaces the entire content with `new_value`.
+    pub fn replace(&self, new_value: T) {
+        self.inner
+            .store(Some(Box::new(Arc::new(new_value))), Ordering::AcqRel);
+    }
 }
 
 /// The `Clone` implementation performs a "deep clone" and clones the `T` (rather than a
@@ -172,6 +178,11 @@ impl<'a, T: Clone> Access<'a, T> {
                 Err(acc) => me = acc,
             }
         }
+    }
+
+    /// Replaces the entire content with `new_value`.
+    pub fn replace(me: Self, new_value: T) {
+        me.parent.replace(new_value);
     }
 }
 
